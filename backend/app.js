@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const userRouter = require("./routes/userRouter");
+const categoryRouter = require("./routes/categoryRouter");
 const errorHandler = require("./middlewares/errorHandlerMiddlerware");
 const app = express();
 
@@ -17,6 +18,8 @@ app.use(express.json()); // to parse JSON bodies
 //!Routes
 app.use("/", userRouter);
 
+app.use("/", categoryRouter);
+
 //Error
 app.use(errorHandler);
 
@@ -24,4 +27,4 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 8000;
 app.listen(PORT,() =>
     console.log(`Server is running on this port... ${PORT} `)
-); 
+);
