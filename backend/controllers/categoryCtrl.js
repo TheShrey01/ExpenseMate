@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../model/User");
 const Category = require("../model/Category");
+const Transaction = require("../model/Transaction");
 
 const categoryController = {
     //! Add
@@ -45,14 +46,48 @@ const categoryController = {
 
     //! Update
     update: asyncHandler(async (req, res) => {
-        // Implementation here
-        res.json({ message: "Category updated (stub)" });
+        const categoryId = req.params.id;
+        const { type, name } = req.body;
+        const normalizedName = name.toLowerCase();
+        const category = await Category.findById(categoryId);
+        if (!category || category.user.toString() !== req.user.toString()) {
+            throw new Error("Category not found or user not authorized");
+        }
+        const oldName = category.name;
+        // Update category properties
+        category.name = normalizedName;
+        category.type = type;
+        const updatedCategory = await category.save();
+
+        // Update affected transactions if the name changed
+        if (oldName !== updatedCategory.name) {
+            await Transaction.updateMany(
+                {
+                    user: req.user,
+                    category: oldName,
+                },
+                { $set: { category: updatedCategory.name } }
+            );
+        }
+        res.json(updatedCategory);
     }),
 
     //! Delete
     delete: asyncHandler(async (req, res) => {
-        // Implementation here
-        res.json({ message: "Category deleted (stub)" });
+        const category = await Category.findById(req.params.id);
+        if (category && category.user.toString() === req.user.toString()) {
+            // Update transactions that have this category
+            const defaultCategory = "Uncategorized"; // Default category name
+            await Transaction.updateMany(
+                { user: req.user, category: category.name },
+                { $set: { category: defaultCategory } }
+            );
+            // Remove category
+            await Category.findByIdAndDelete(req.params.id);
+            res.json({ message: "Category removed and transactions updated" });
+        } else {
+            res.json({ message: "Category not found or user not authorized" });
+        }
     }),
 };
 
